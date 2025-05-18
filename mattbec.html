@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Wireframe Cube with Spheres</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
+
+        function init() {
+            // Set up the scene, camera, and renderer
+            scene = new THREE.Scene();
+
+			// Define the size of the view frustum for the orthographic camera
+			const frustumSize = 250;
+			const aspect = window.innerWidth / window.innerHeight;
+			camera = new THREE.OrthographicCamera(
+			    -frustumSize * aspect / 2, frustumSize * aspect / 2,
+			    frustumSize / 2, -frustumSize / 2,
+			    0.1, 1000
+			);
+			
+			
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Create a wireframe cube with dimensions 200x200x200
+            const size = 200;
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const wireframe = new THREE.LineSegments(edges, lineMaterial);
+            scene.add(wireframe);
+
+            // Set the camera position and render the scene
+            camera.position.set(200, 200, 400);
+            camera.lookAt(0, 0, 0);
+
+            // Initialize OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, 0);
+		//	controls.autoRotate = true;
+
+            controls.update();
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+			if (document.getElementById("snap-check").checked) {
+				snapToBasisVectors();
+			}
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function addSpheres(positions) {
+            const sphereGeometry = new THREE.SphereGeometry(0.3, 32, 32); // Adjusted size
+            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd99, transparent: true, opacity: 0.1 });
+
+            positions.forEach(coord => {
+                const [x, z, y] = coord;
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.set(x - 100, -y + 100, z - 100); // Centering spheres within the cube
+                scene.add(sphere);
+            });
+        }
+
+        async function loadJSON() {
+            try {
+                const response = await fetch('mattbec-tuples.json');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                const data = await response.json();
+                console.log(data);
+                addSpheres(data);
+            } catch (error) {
+                console.error('There has been a problem with your fetch operation:', error);
+            }
+        }
+
+        // Function to snap the camera to the nearest basis vector
+        function snapToBasisVectors() {
+            const epsilon = 0.05; // Tolerance for snapping
+
+            const targetPosition = controls.target.clone().normalize();
+            const cameraPosition = camera.position.clone().normalize();
+
+            // Snap to x-axis
+            if (Math.abs(cameraPosition.x - 1) < epsilon && Math.abs(cameraPosition.y) < epsilon && Math.abs(cameraPosition.z) < epsilon) {
+                camera.position.set(800, 0, 0);//.multiplyScalar(camera.position.length());
+            } else if (Math.abs(cameraPosition.x + 1) < epsilon && Math.abs(cameraPosition.y) < epsilon && Math.abs(cameraPosition.z) < epsilon) {
+                camera.position.set(-800, 0, 0);//.multiplyScalar(camera.position.length() * 3);
+            }
+
+            // Snap to y-axis
+            if (Math.abs(cameraPosition.x) < epsilon && Math.abs(cameraPosition.y - 1) < epsilon && Math.abs(cameraPosition.z) < epsilon) {
+                camera.position.set(0, 800, 0);//.multiplyScalar(camera.position.length());
+            } else if (Math.abs(cameraPosition.x) < epsilon && Math.abs(cameraPosition.y + 1) < epsilon && Math.abs(cameraPosition.z) < epsilon) {
+                camera.position.set(0, -800, 0);//.multiplyScalar(camera.position.length());
+            }
+
+            // Snap to z-axis
+            if (Math.abs(cameraPosition.x) < epsilon && Math.abs(cameraPosition.y) < epsilon && Math.abs(cameraPosition.z - 1) < epsilon) {
+                camera.position.set(0, 0, 800);//.multiplyScalar(camera.position.length());
+            } else if (Math.abs(cameraPosition.x) < epsilon && Math.abs(cameraPosition.y) < epsilon && Math.abs(cameraPosition.z + 1) < epsilon) {
+                camera.position.set(0, 0, -800);//.multiplyScalar(camera.position.length());
+            }
+        }
+
+        window.onload = () => {
+            init();
+            loadJSON();
+        };
+    </script>
+</head>
+<body>
+	<div style="padding: 0 2em">
+	    <h1>A Problem to the Sixth</h1>
+		<p style="float:right">
+			<a href="../parker-cube.html">The Parker Cube</a>
+		</p>
+		<label><input type="checkbox" id="snap-check" />Snap to faces</label>
+		<p>Drag to rotate the cube.</p>
+	</div>
+</body>
+</html>
